@@ -1,0 +1,178 @@
+-- ==========================================
+-- FUSIÓN DE SCRIPTS: OPTIMIZACIÓN + GUI FPS
+-- ==========================================
+
+-- --- PARTE 1: CONFIGURACIÓN INICIAL Y OPTIMIZACIÓN VISUAL ---
+local decalsyeeted = true
+local g = game
+local w = g.Workspace
+local l = g.Lighting
+local t = w.Terrain
+local RunService = g:GetService("RunService")
+local Players = g:GetService("Players")
+
+-- Exibe "VitorYT00" em azul por 10 segundos
+local IntroGui = Instance.new("ScreenGui")
+local IntroLabel = Instance.new("TextLabel")
+IntroGui.Parent = g:GetService("CoreGui")
+IntroLabel.Parent = IntroGui
+IntroLabel.Size = UDim2.new(0, 400, 0, 50)
+IntroLabel.Position = UDim2.new(0.5, -200, 0.5, -25)
+IntroLabel.Text = "VitorYT00"
+IntroLabel.FontSize = Enum.FontSize.Size24
+IntroLabel.TextColor3 = Color3.new(0, 0, 1)
+IntroLabel.BackgroundTransparency = 1
+
+task.spawn(function()
+    wait(10)
+    IntroLabel.Text = "Atualização v1.0"
+    wait(5)
+    IntroLabel:Destroy()
+    IntroGui:Destroy()
+end)
+
+-- Ajustes de Iluminación y Agua
+l.Ambient = Color3.new(0, 1, 1)
+t.WaterWaveSize = 0
+t.WaterWaveSpeed = 0
+t.WaterReflectance = 0
+t.WaterTransparency = 0
+l.GlobalShadows = false
+l.FogEnd = 9e9
+l.Brightness = 0
+
+-- Calidad de Renderizado
+settings().Rendering.QualityLevel = "Level01"
+
+-- Limpieza Masiva de Objetos
+for i,v in pairs(g:GetDescendants()) do
+    if v:IsA("Part") or v:IsA("Union") or v:IsA("MeshPart") or v:IsA("CornerWedgePart") or v:IsA("TrussPart") then
+        v.Material = "Plastic"
+        v.Reflectance = 0
+        if v.Color == Color3.new(1, 0, 0) then
+            v.Color = Color3.new(0, 1, 1)
+        elseif v.Color == Color3.new(0, 0, 0) then
+            v.Transparency = 1
+        end
+    elseif v:IsA("Decal") and decalsyeeted then
+        v.Transparency = 1
+    elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+        v.Lifetime = NumberRange.new(0)
+    elseif v:IsA("Explosion") then
+        v.BlastPressure = 1
+        v.BlastRadius = 1
+    end
+end
+
+-- Desactivar Efectos de Post-procesamiento
+for i,e in pairs(l:GetChildren()) do
+    if e:IsA("BlurEffect") or e:IsA("SunRaysEffect") or e:IsA("ColorCorrectionEffect") or e:IsA("BloomEffect") or e:IsA("DepthOfFieldEffect") then
+        e.Enabled = false
+    end
+end
+
+-- --- PARTE 2: INTERFAZ CHIQUIX GUI + LÓGICA DE REDUCCIÓN ---
+local lp = Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "ChiquixReduceGUI"
+gui.ResetOnSpawn = false
+gui.Parent = g:GetService("CoreGui")
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 220, 0, 120)
+main.Position = UDim2.new(0.5, -110, 0.5, -60)
+main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = true
+main.Parent = gui
+
+local corner = Instance.new("UICorner", main)
+corner.CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,0,0,30)
+title.BackgroundTransparency = 1
+title.Text = " Chiquix fps 🍗"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.Parent = main
+
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Size = UDim2.new(1,0,0,20)
+fpsLabel.Position = UDim2.new(0,0,0,35)
+fpsLabel.BackgroundTransparency = 1
+fpsLabel.Text = "FPS: 0"
+fpsLabel.Font = Enum.Font.GothamBold
+fpsLabel.TextSize = 14
+fpsLabel.TextColor3 = Color3.fromRGB(255,255,0)
+fpsLabel.Parent = main
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0.8,0,0,40)
+button.Position = UDim2.new(0.1,0,0.6,0)
+button.Text = "Reduce"
+button.Font = Enum.Font.GothamBold
+button.TextSize = 16
+button.TextColor3 = Color3.fromRGB(255,255,255)
+button.BackgroundColor3 = Color3.fromRGB(50,150,255)
+button.Parent = main
+
+Instance.new("UICorner", button).CornerRadius = UDim.new(0,8)
+
+button.MouseButton1Click:Connect(function()
+    button.Text = "Success!"
+    button.BackgroundColor3 = Color3.fromRGB(0,200,0)
+
+    _G.Ignore = {}
+    _G.Settings = {
+        Players = {["Ignore Me"]=true,["Ignore Others"]=true,["Ignore Tools"]=true},
+        Meshes = {NoMesh=false,NoTexture=false,Destroy=false},
+        Images = {Invisible=true,Destroy=false},
+        Explosions = {Smaller=true,Invisible=false,Destroy=false},
+        Particles = {Invisible=true,Destroy=false},
+        TextLabels = {LowerQuality=true,Invisible=false,Destroy=false},
+        MeshParts = {LowerQuality=true,Invisible=false,NoTexture=false,NoMesh=false,Destroy=false},
+        Other = {
+            ["FPS Cap"]=360,
+            ["No Camera Effects"]=true,
+            ["No Clothes"]=true,
+            ["Low Water Graphics"]=true,
+            ["No Shadows"]=true,
+            ["Low Rendering"]=true,
+            ["Low Quality Parts"]=true,
+            ["Low Quality Models"]=true,
+            ["Reset Materials"]=true
+        }
+    }
+
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/CasperFlyModz/discord.gg-rips/main/FPSBooster.lua"))()
+    end)
+
+    -- Limpieza de notificaciones
+    for _, child in pairs(g:GetService("CoreGui"):GetChildren()) do
+        if child:IsA("ScreenGui") and (child.Name:match("Badge") or child.Name:match("Notification")) then
+            child:Destroy()
+        end
+    end
+
+    delay(3, function()
+        button.Text = "Reduce"
+        button.BackgroundColor3 = Color3.fromRGB(50,150,255)
+    end)
+end)
+
+-- Actualización de FPS
+local lastTime = tick()
+local frameCount = 0
+RunService.RenderStepped:Connect(function()
+    frameCount += 1
+    local currentTime = tick()
+    if currentTime - lastTime >= 1 then
+        fpsLabel.Text = "FPS: "..frameCount
+        frameCount = 0
+        lastTime = currentTime
+    end
+end)
