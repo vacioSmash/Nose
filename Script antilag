@@ -1,173 +1,70 @@
 -- ==========================================
--- FUSIÓN FINAL: OPTIMIZACIÓN TOTAL (NO QUITE NADA)
+-- SCRIPT DE PURGA TOTAL + NOTIFICACIÓN
 -- ==========================================
 
--- --- PARTE 1: CONFIGURACIÓN Y OPTIMIZACIÓN VISUAL (VitorYT00) ---
-local decalsyeeted = true
 local g = game
 local w = g.Workspace
-local l = g.Lighting
-local t = w.Terrain
-local RunService = g:GetService("RunService")
-local Players = g:GetService("Players")
+local rs = g:GetService("ReplicatedStorage")
+local starterGui = g:GetService("StarterGui")
 
--- Exibe "VitorYT00" (Sin pantalla azul, brillo normal)
-local IntroGui = Instance.new("ScreenGui")
-local IntroLabel = Instance.new("TextLabel")
-IntroGui.Parent = g:GetService("CoreGui")
-IntroLabel.Parent = IntroGui
-IntroLabel.Size = UDim2.new(0, 400, 0, 50)
-IntroLabel.Position = UDim2.new(0.5, -200, 0.5, -25)
-IntroLabel.Text = "VitorYT00"
-IntroLabel.FontSize = Enum.FontSize.Size24
-IntroLabel.TextColor3 = Color3.new(1, 1, 1)
-IntroLabel.BackgroundTransparency = 1
+-- 1. FUNCIÓN DE NOTIFICACIÓN (Estilo Amistad/Sistema)
+local function MostrarNotificacion()
+    starterGui:SetCore("SendNotification", {
+        Title = "Executed Script successfully",
+        Text = "By chiqui",
+        Icon = "rbxassetid://6034509993", -- Icono de check/escudo
+        Duration = 5
+    })
+end
 
-task.spawn(function()
-    wait(10)
-    IntroLabel.Text = "Atualização v1.0"
-    wait(5)
-    IntroLabel:Destroy()
-    IntroGui:Destroy()
-end)
-
--- Ajustes de Iluminación y Agua (Manteniendo optimización original)
-t.WaterWaveSize = 0
-t.WaterWaveSpeed = 0
-t.WaterReflectance = 0
-t.WaterTransparency = 0
-l.GlobalShadows = false
-l.FogEnd = 9e9
-l.Brightness = 1
-settings().Rendering.QualityLevel = "Level01"
-
--- --- NUEVA FUNCIÓN: BORRADO DE NO SÓLIDOS Y PISOS DE COMBATE (TSB) ---
-local function SuperOptimize(v)
-    -- 1. Quitar VFX (Partículas, Trails, Explosiones)
-    if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-        v.Enabled = false
-    elseif v:IsA("Explosion") then
-        v.BlastPressure = 0
-        v.BlastRadius = 0
-        v.Visible = false
+-- 2. FUNCIÓN MAESTRA DE LIMPIEZA
+local function LimpiezaExtrema(v)
+    -- A. Borrar Carpeta Resources (específicamente en ReplicatedStorage)
+    if v:IsA("Folder") and v.Name == "Resources" and v.Parent == rs then
+        v:Destroy()
+        return
     end
 
-    -- 2. BORRAR BLOQUES NO SÓLIDOS (Sin colisión)
-    -- Se ignora a los jugadores para no romper el juego
-    if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") and not v.Parent.Parent:FindFirstChild("Humanoid") then
-        if v.CanCollide == false then
-            v:Destroy()
-            return -- Si se borra, no seguimos procesando
-        end
+    -- B. Borrar todos los archivos Particle (por clase y nombre)
+    if v:IsA("ParticleEmitter") or v:IsA("Particle") or v.Name:lower():match("particle") then
+        v:Destroy()
+        return
     end
 
-    -- 3. BORRAR PISOS NUEVOS / BARRERAS DE GOLPES
-    -- Detecta piezas creadas por habilidades (común en TSB)
-    local destructionNames = {"Rock", "Ground", "Floor", "Wall", "Chunk", "Effect"}
-    for _, name in pairs(destructionNames) do
-        if v:IsA("BasePart") and v.Name:match(name) then
-            task.wait() -- Delay mínimo para estabilidad
-            v:Destroy()
-            return
-        end
+    -- C. Borrar efectos de línea (Beams, Trails y LineHandles)
+    if v:IsA("Trail") or v:IsA("Beam") or v:IsA("LineHandleAdornment") then
+        v:Destroy()
+        return
     end
 
-    -- 4. Aplicar material Plastic (Optimización VitorYT00 original)
-    if v:IsA("BasePart") then
-        v.Material = "Plastic"
-        v.Reflectance = 0
-        if v.Color == Color3.new(0, 0, 0) then
-            v.Transparency = 1
-        end
-    elseif v:IsA("Decal") and decalsyeeted then
-        v.Transparency = 1
+    -- D. Borrar MeshParts que tienen como padre a "Tree"
+    if v:IsA("MeshPart") and v.Parent and v.Parent.Name == "Tree" then
+        v:Destroy()
+        return
     end
 end
 
--- Limpieza Masiva Inicial
-for _, v in pairs(g:GetDescendants()) do
-    SuperOptimize(v)
-end
+-- 3. ESCANEO GLOBAL (En todos los archivos y carpetas del juego)
+print("Iniciando escaneo global de archivos...")
 
--- Monitor en Tiempo Real (Borra lo nuevo al instante)
-g.DescendantAdded:Connect(function(obj)
-    SuperOptimize(obj)
-end)
-
--- --- PARTE 2: INTERFAZ CHIQUIX GUI + REDUCE BOTÓN ---
-local gui = Instance.new("ScreenGui")
-gui.Name = "ChiquixReduceGUI"
-gui.ResetOnSpawn = false
-gui.Parent = g:GetService("CoreGui")
-
-local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 220, 0, 120)
-main.Position = UDim2.new(0.5, -110, 0.5, -60)
-main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-main.Active = true
-main.Draggable = true
-main.Parent = gui
-
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1,0,0,30)
-title.BackgroundTransparency = 1
-title.Text = " Chiquix fps 🍗"
-title.Font = Enum.Font.GothamBold
-title.TextColor3 = Color3.fromRGB(255,255,255)
-title.Parent = main
-
-local fpsLabel = Instance.new("TextLabel")
-fpsLabel.Size = UDim2.new(1,0,0,20)
-fpsLabel.Position = UDim2.new(0,0,0,35)
-fpsLabel.BackgroundTransparency = 1
-fpsLabel.Text = "FPS: 0"
-fpsLabel.TextColor3 = Color3.fromRGB(255,255,0)
-fpsLabel.Parent = main
-
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0.8,0,0,40)
-button.Position = UDim2.new(0.1,0,0.6,0)
-button.Text = "Reduce"
-button.BackgroundColor3 = Color3.fromRGB(50,150,255)
-button.TextColor3 = Color3.fromRGB(255,255,255)
-button.Parent = main
-
-Instance.new("UICorner", button).CornerRadius = UDim.new(0,8)
-
-button.MouseButton1Click:Connect(function()
-    button.Text = "Success!"
-    button.BackgroundColor3 = Color3.fromRGB(0,200,0)
-
-    _G.Settings = {
-        Other = {
-            ["FPS Cap"]=360,
-            ["No Shadows"]=true,
-            ["Low Rendering"]=true,
-            ["Reset Materials"]=true
-        }
-    }
-
+for _, servicio in pairs(g:GetChildren()) do
     pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/CasperFlyModz/discord.gg-rips/main/FPSBooster.lua"))()
+        -- Usamos GetDescendants para no dejar ni una carpeta sin revisar
+        for _, obj in pairs(servicio:GetDescendants()) do
+            LimpiezaExtrema(obj)
+        end
     end)
+end
 
-    delay(3, function()
-        button.Text = "Reduce"
-        button.BackgroundColor3 = Color3.fromRGB(50,150,255)
+-- 4. MONITOR EN TIEMPO REAL (Para lo que aparezca después)
+g.DescendantAdded:Connect(function(obj)
+    pcall(function()
+        task.wait() -- Breve espera para que el motor asigne las propiedades
+        LimpiezaExtrema(obj)
     end)
 end)
 
--- Actualización de FPS
-local lastTime = tick()
-local frameCount = 0
-RunService.RenderStepped:Connect(function()
-    frameCount += 1
-    local currentTime = tick()
-    if currentTime - lastTime >= 1 then
-        fpsLabel.Text = "FPS: "..frameCount
-        frameCount = 0
-        lastTime = currentTime
-    end
-end)
+-- 5. EJECUCIÓN DE NOTIFICACIÓN
+MostrarNotificacion()
+
+print("--- LIMPIEZA COMPLETADA POR CHIQUI ---")
