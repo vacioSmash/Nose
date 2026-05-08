@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT DE PURGA ULTRA-AGRESIVA + ANTI-LAG PRO
+-- SCRIPT DE PURGA DEFINITIVA: ULTRA-AGRESIVA + ANTI-TEXTURAS
 -- ==========================================
 
 local g = game
@@ -20,18 +20,24 @@ local function MostrarNotificacion()
     end)
 end
 
--- 2. FUNCIÓN MAESTRA DE PURGA (Ultra Agresiva)
-local function PurgaTotal(v)
+-- 2. FUNCIÓN MAESTRA DE PURGA (Combina PurgaTotal y BorrarParticulas)
+local function PurgaMaestra(v)
     local nameLower = v.Name:lower()
 
-    -- A. Borrado de Escombros Específicos (TSB Debris)
+    -- A. Purga de Partículas (Por Clase y Nombre en todos los servicios)
+    if v:IsA("ParticleEmitter") or v:IsA("Particle") or nameLower:match("particle") then
+        v:Destroy()
+        return
+    end
+
+    -- B. Borrado de Escombros Específicos (TSB Debris)
     if v:IsA("Part") and v.Name == "Debris" and v.Parent and v.Parent.Name == "Thrown" then
         v:Destroy()
         return
     end
 
-    -- B. Borrado de Bloques sin Colisión (No Sólidos)
-    -- Evitamos borrar a los jugadores y objetos esenciales del personaje
+    -- C. Borrado de Bloques sin Colisión (No Sólidos)
+    -- Se ignora a los jugadores para no romper el juego
     if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") and not v.Parent.Parent:FindFirstChild("Humanoid") then
         if v.CanCollide == false then
             v:Destroy()
@@ -39,60 +45,61 @@ local function PurgaTotal(v)
         end
     end
 
-    -- C. Anti-Smoke, Partículas y Efectos de Línea
-    if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or 
-       v:IsA("Trail") or v:IsA("Beam") or nameLower:match("particle") or 
+    -- D. Anti-Smoke, Fuego y Efectos de Línea
+    if v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or 
+       v:IsA("Trail") or v:IsA("Beam") or 
        nameLower:match("smoke") or nameLower:match("cloud") or nameLower:match("mist") then
         v:Destroy()
         return
     end
 
-    -- D. Borrar Carpeta Resources en ReplicatedStorage
+    -- E. Limpieza de Carpetas Pesadas (Resources en ReplicatedStorage)
     if v.Name == "Resources" and v.Parent == rs then
         v:Destroy()
         return
     end
 
-    -- E. Borrar MeshParts de Árboles
+    -- F. Borrado de MeshParts de Árboles (Trees)
     if v:IsA("MeshPart") and v.Parent and v.Parent.Name == "Tree" then
         v:Destroy()
         return
     end
 
-    -- F. REMOCIÓN DE TEXTURAS (Colores Sólidos y Plastic)
+    -- G. REMOCIÓN AGRESIVA DE TEXTURAS (Colores Sólidos / FPS Boost)
     if v:IsA("BasePart") then
         v.Material = Enum.Material.Plastic
         v.Reflectance = 0
-        -- Si tiene texturas hijas, borrarlas
+        -- Elimina Decals y Textures dentro de cualquier bloque
         for _, child in pairs(v:GetChildren()) do
             if child:IsA("Decal") or child:IsA("Texture") then
                 child:Destroy()
             end
         end
     elseif v:IsA("MeshPart") then
-        v.TextureID = ""
+        v.Material = Enum.Material.Plastic
+        v.TextureID = "" -- Quita la textura del modelo
     elseif v:IsA("SpecialMesh") then
-        v.TextureId = ""
+        v.TextureId = "" -- Quita la textura de mallas especiales
     end
 end
 
--- 3. ESCANEO GLOBAL PROFUNDO (Todos los servicios)
-print("Iniciando Purga Máxima...")
+-- 3. ESCANEO GLOBAL INICIAL (En todos los archivos y servicios)
+print("Iniciando Purga Maestra de Partículas, Texturas y Objetos...")
 
 for _, servicio in pairs(g:GetChildren()) do
     pcall(function()
         local descendientes = servicio:GetDescendants()
         for i = 1, #descendientes do
-            PurgaTotal(descendientes[i])
+            PurgaMaestra(descendientes[i])
         end
     end)
 end
 
--- 4. MONITOR REAL-TIME INSTANTÁNEO (Para bloqueos recién creados)
+-- 4. MONITOR REAL-TIME (Anti-Spawn para nuevos objetos)
 g.DescendantAdded:Connect(function(obj)
     pcall(function()
-        -- Sin esperas para máxima agresividad
-        PurgaTotal(obj)
+        -- Sin esperas largas para borrar al instante
+        PurgaMaestra(obj)
     end)
 end)
 
@@ -110,7 +117,6 @@ pcall(function()
         end
     end
 end)
-
--- 6. EJECUCIÓN
+-- 6. EJECUCIÓN FINAL
 MostrarNotificacion()
-print("--- PURGA AGRESIVA COMPLETADA POR CHIQUI ---")
+print("--- PURGA MAESTRA COMPLETADA POR CHIQUI (Partículas y Texturas eliminadas) ---")
