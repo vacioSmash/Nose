@@ -1,70 +1,116 @@
 -- ==========================================
--- SCRIPT DE PURGA TOTAL + NOTIFICACIÓN
+-- SCRIPT DE PURGA ULTRA-AGRESIVA + ANTI-LAG PRO
 -- ==========================================
 
 local g = game
 local w = g.Workspace
+local l = g.Lighting
 local rs = g:GetService("ReplicatedStorage")
 local starterGui = g:GetService("StarterGui")
 
--- 1. FUNCIÓN DE NOTIFICACIÓN (Estilo Amistad/Sistema)
+-- 1. NOTIFICACIÓN DE ÉXITO
 local function MostrarNotificacion()
-    starterGui:SetCore("SendNotification", {
-        Title = "Executed Script successfully",
-        Text = "By chiqui",
-        Icon = "rbxassetid://6034509993", -- Icono de check/escudo
-        Duration = 5
-    })
+    pcall(function()
+        starterGui:SetCore("SendNotification", {
+            Title = "Executed Script successfully",
+            Text = "By chiqui",
+            Icon = "rbxassetid://6034509993",
+            Duration = 5
+        })
+    end)
 end
 
--- 2. FUNCIÓN MAESTRA DE LIMPIEZA
-local function LimpiezaExtrema(v)
-    -- A. Borrar Carpeta Resources (específicamente en ReplicatedStorage)
-    if v:IsA("Folder") and v.Name == "Resources" and v.Parent == rs then
+-- 2. FUNCIÓN MAESTRA DE PURGA (Ultra Agresiva)
+local function PurgaTotal(v)
+    local nameLower = v.Name:lower()
+
+    -- A. Borrado de Escombros Específicos (TSB Debris)
+    if v:IsA("Part") and v.Name == "Debris" and v.Parent and v.Parent.Name == "Thrown" then
         v:Destroy()
         return
     end
 
-    -- B. Borrar todos los archivos Particle (por clase y nombre)
-    if v:IsA("ParticleEmitter") or v:IsA("Particle") or v.Name:lower():match("particle") then
+    -- B. Borrado de Bloques sin Colisión (No Sólidos)
+    -- Evitamos borrar a los jugadores y objetos esenciales del personaje
+    if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") and not v.Parent.Parent:FindFirstChild("Humanoid") then
+        if v.CanCollide == false then
+            v:Destroy()
+            return
+        end
+    end
+
+    -- C. Anti-Smoke, Partículas y Efectos de Línea
+    if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or 
+       v:IsA("Trail") or v:IsA("Beam") or nameLower:match("particle") or 
+       nameLower:match("smoke") or nameLower:match("cloud") or nameLower:match("mist") then
         v:Destroy()
         return
     end
 
-    -- C. Borrar efectos de línea (Beams, Trails y LineHandles)
-    if v:IsA("Trail") or v:IsA("Beam") or v:IsA("LineHandleAdornment") then
+    -- D. Borrar Carpeta Resources en ReplicatedStorage
+    if v.Name == "Resources" and v.Parent == rs then
         v:Destroy()
         return
     end
 
-    -- D. Borrar MeshParts que tienen como padre a "Tree"
+    -- E. Borrar MeshParts de Árboles
     if v:IsA("MeshPart") and v.Parent and v.Parent.Name == "Tree" then
         v:Destroy()
         return
     end
+
+    -- F. REMOCIÓN DE TEXTURAS (Colores Sólidos y Plastic)
+    if v:IsA("BasePart") then
+        v.Material = Enum.Material.Plastic
+        v.Reflectance = 0
+        -- Si tiene texturas hijas, borrarlas
+        for _, child in pairs(v:GetChildren()) do
+            if child:IsA("Decal") or child:IsA("Texture") then
+                child:Destroy()
+            end
+        end
+    elseif v:IsA("MeshPart") then
+        v.TextureID = ""
+    elseif v:IsA("SpecialMesh") then
+        v.TextureId = ""
+    end
 end
 
--- 3. ESCANEO GLOBAL (En todos los archivos y carpetas del juego)
-print("Iniciando escaneo global de archivos...")
+-- 3. ESCANEO GLOBAL PROFUNDO (Todos los servicios)
+print("Iniciando Purga Máxima...")
 
 for _, servicio in pairs(g:GetChildren()) do
     pcall(function()
-        -- Usamos GetDescendants para no dejar ni una carpeta sin revisar
-        for _, obj in pairs(servicio:GetDescendants()) do
-            LimpiezaExtrema(obj)
+        local descendientes = servicio:GetDescendants()
+        for i = 1, #descendientes do
+            PurgaTotal(descendientes[i])
         end
     end)
 end
 
--- 4. MONITOR EN TIEMPO REAL (Para lo que aparezca después)
+-- 4. MONITOR REAL-TIME INSTANTÁNEO (Para bloqueos recién creados)
 g.DescendantAdded:Connect(function(obj)
     pcall(function()
-        task.wait() -- Breve espera para que el motor asigne las propiedades
-        LimpiezaExtrema(obj)
+        -- Sin esperas para máxima agresividad
+        PurgaTotal(obj)
     end)
 end)
 
--- 5. EJECUCIÓN DE NOTIFICACIÓN
-MostrarNotificacion()
+-- 5. AJUSTES DE ILUMINACIÓN EXTREMOS
+pcall(function()
+    l.GlobalShadows = false
+    l.FogEnd = 9e9
+    l.Brightness = 1
+    if l:FindFirstChildOfClass("Atmosphere") then
+        l:FindFirstChildOfClass("Atmosphere"):Destroy()
+    end
+    for _, effect in pairs(l:GetChildren()) do
+        if effect:IsA("PostProcessEffect") then
+            effect.Enabled = false
+        end
+    end
+end)
 
-print("--- LIMPIEZA COMPLETADA POR CHIQUI ---")
+-- 6. EJECUCIÓN
+MostrarNotificacion()
+print("--- PURGA AGRESIVA COMPLETADA POR CHIQUI ---")
