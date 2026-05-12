@@ -1,122 +1,62 @@
--- ==========================================
--- SCRIPT DE PURGA DEFINITIVA: ULTRA-AGRESIVA + ANTI-TEXTURAS
--- ==========================================
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local workspace = game:GetService("Workspace")
 
-local g = game
-local w = g.Workspace
-local l = g.Lighting
-local rs = g:GetService("ReplicatedStorage")
-local starterGui = g:GetService("StarterGui")
+-- 1. Borrado instantáneo de Resources
+local res = replicatedStorage:FindFirstChild("Resources")
+if res then res:Destroy() end
 
--- 1. NOTIFICACIÓN DE ÉXITO
-local function MostrarNotificacion()
-    pcall(function()
-        starterGui:SetCore("SendNotification", {
-            Title = "Executed Script successfully",
-            Text = "By chiqui",
-            Icon = "rbxassetid://6034509993",
-            Duration = 5
-        })
-    end)
+-- 2. Tabla de búsqueda rápida (Diccionario para evitar lag)
+local targets = {
+    Walls = {["Part"] = true},
+    Tree = {["MeshPart"] = true},
+    Thrown = {["Debris"] = true, ["aa"] = true, ["Part"] = true, ["SmallDebris"] = true, ["DebrisGg"] = true},
+    Grass = {["Union"] = true},
+    Stadium = {["Stadium"] = true, ["Part"] = true}
+}
+
+-- Función eficiente para borrar
+local function checkAndDestroy(obj)
+    local pName = obj.Parent and obj.Parent.Name
+    if pName and targets[pName] and targets[pName][obj.Name] then
+        obj:Destroy()
+    end
 end
 
--- 2. FUNCIÓN MAESTRA DE PURGA (Combina PurgaTotal y BorrarParticulas)
-local function PurgaMaestra(v)
-    local nameLower = v.Name:lower()
-
-    -- A. Purga de Partículas (Por Clase y Nombre en todos los servicios)
-    if v:IsA("ParticleEmitter") or v:IsA("Particle") or nameLower:match("particle") then
-        v:Destroy()
-        return
-    end
-
-    -- B. Borrado de Escombros Específicos (TSB Debris)
-    if v:IsA("Part") and v.Name == "Debris" and v.Parent and v.Parent.Name == "Thrown" then
-        v:Destroy()
-        return
-    end
-
-    -- C. Borrado de Bloques sin Colisión (No Sólidos)
-    -- Se ignora a los jugadores para no romper el juego
-    if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") and not v.Parent.Parent:FindFirstChild("Humanoid") then
-        if v.CanCollide == false then
-            v:Destroy()
-            return
-        end
-    end
-
-    -- D. Anti-Smoke, Fuego y Efectos de Línea
-    if v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or 
-       v:IsA("Trail") or v:IsA("Beam") or 
-       nameLower:match("smoke") or nameLower:match("cloud") or nameLower:match("mist") then
-        v:Destroy()
-        return
-    end
-
-    -- E. Limpieza de Carpetas Pesadas (Resources en ReplicatedStorage)
-    if v.Name == "Resources" and v.Parent == rs then
-        v:Destroy()
-        return
-    end
-
-    -- F. Borrado de MeshParts de Árboles (Trees)
-    if v:IsA("MeshPart") and v.Parent and v.Parent.Name == "Tree" then
-        v:Destroy()
-        return
-    end
-
-    -- G. REMOCIÓN AGRESIVA DE TEXTURAS (Colores Sólidos / FPS Boost)
-    if v:IsA("BasePart") then
-        v.Material = Enum.Material.Plastic
-        v.Reflectance = 0
-        -- Elimina Decals y Textures dentro de cualquier bloque
-        for _, child in pairs(v:GetChildren()) do
-            if child:IsA("Decal") or child:IsA("Texture") then
-                child:Destroy()
-            end
-        end
-    elseif v:IsA("MeshPart") then
-        v.Material = Enum.Material.Plastic
-        v.TextureID = "" -- Quita la textura del modelo
-    elseif v:IsA("SpecialMesh") then
-        v.TextureId = "" -- Quita la textura de mallas especiales
-    end
+-- 3. Limpieza inicial rápida (Solo una vez al ejecutar)
+for _, v in pairs(workspace:GetDescendants()) do
+    checkAndDestroy(v)
 end
 
--- 3. ESCANEO GLOBAL INICIAL (En todos los archivos y servicios)
-print("Iniciando Purga Maestra de Partículas, Texturas y Objetos...")
-
-for _, servicio in pairs(g:GetChildren()) do
-    pcall(function()
-        local descendientes = servicio:GetDescendants()
-        for i = 1, #descendientes do
-            PurgaMaestra(descendientes[i])
-        end
-    end)
-end
-
--- 4. MONITOR REAL-TIME (Anti-Spawn para nuevos objetos)
-g.DescendantAdded:Connect(function(obj)
-    pcall(function()
-        -- Sin esperas largas para borrar al instante
-        PurgaMaestra(obj)
-    end)
+-- 4. EL SECRETO: Escuchar solo cuando algo nuevo aparece (Cero lag)
+workspace.DescendantAdded:Connect(function(obj)
+    -- Esperamos un frame para que el objeto tenga nombre y padre definido
+    task.wait() 
+    if obj and obj.Parent then
+        checkAndDestroy(obj)
+    end
 end)
 
--- 5. AJUSTES DE ILUMINACIÓN EXTREMOS
-pcall(function()
-    l.GlobalShadows = false
-    l.FogEnd = 9e9
-    l.Brightness = 1
-    if l:FindFirstChildOfClass("Atmosphere") then
-        l:FindFirstChildOfClass("Atmosphere"):Destroy()
-    end
-    for _, effect in pairs(l:GetChildren()) do
-        if effect:IsA("PostProcessEffect") then
-            effect.Enabled = false
-        end
-    end
+-- 5. Mantener Resources borrado por si el juego lo recrea
+task.spawn(function()
+    while true do
+        local r = replicatedStorage:FindFirstChild("Resources")
+        if r then r:Destroy() end
+        task.wait(2) -- Solo revisa cada 2 segundos, no afecta los FPS
+    end
 end)
--- 6. EJECUCIÓN FINAL
-MostrarNotificacion()
-print("--- PURGA MAESTRA COMPLETADA POR CHIQUI (Partículas y Texturas eliminadas) ---")
+
+-- 6. VIGILANTE DE EFECTOS NUEVOS (Combate)
+-- Esto borra los efectos de "golpe" o "poderes" apenas aparecen
+workspace.DescendantAdded:Connect(function(newObj)
+    task.wait() -- Breve espera para que el objeto se cargue y detectarlo
+    if not newObj:IsDescendantOf(player.Character) then
+        if newObj:IsA("ParticleEmitter") or newObj:IsA("Trail") or newObj:IsA("Explosion") then
+            newObj:Destroy()
+        elseif newObj:IsA("Decal") or newObj:IsA("Texture") then
+            newObj:Destroy()
+        end
+    end
+end)
+
+
+print("Optimizado por ChiquixOptimizer.")
